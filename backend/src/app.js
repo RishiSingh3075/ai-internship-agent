@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import jobRoutes from "./routes/job.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
 import applicationRoutes from "./routes/application.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/application", applicationRoutes);
 app.use("/api/jobs", jobRoutes)
+app.use("/api/ai", aiRoutes);
 
 // Global Error Handler (must be last)
 app.use(errorHandler);
