@@ -122,7 +122,7 @@ try {
 const matchJobs=asyncHandler(async(req,res)=>{
   const userId=req.user.id;
   const {resumeId}=req.body;
-  const resume=await prisma.resume.findFirst({
+  let resume=await prisma.resume.findFirst({
     where:{
       id:resumeId,
       userId,
@@ -139,6 +139,7 @@ const matchJobs=asyncHandler(async(req,res)=>{
 
   console.log("Resume Title:", resumeTitle);
   console.log("Resume Content:", resumeText);
+if (!Array.isArray(resume.parseSkills) || resume.parseSkills.length === 0){    // if parseSkills is null or empty
   const prompt =`
 Return ONLY valid JSON in this format:
 
@@ -185,19 +186,36 @@ try {
   };
 }
 
-const resumeSkills = Array.isArray(parsedOutputskills.skills)
-  ? parsedOutputskills.skills
+// v2 added parsedSKills to resume 
+if (Array.isArray(parsedOutputskills.skills)) {
+  resume = await prisma.resume.update({
+    where: { id: resumeId },
+    data: {
+      parseSkills: parsedOutputskills.skills
+    }
+  });
+} else {
+  return res.status(500).json(
+    apiResponse(500, null, "Failed to extract skills from resume")
+  );
+}}
+const resumeSkills = Array.isArray(resume.parseSkills)
+  ? resume.parseSkills
   : [];
 // to make sure resumeSkills is an array
+
 const jobs = await prisma.job.findMany();
 
 const results = jobs.map(job => {
 
-  const jobDescLower = job.description.toLowerCase();
+  const jobDesc = job.description.toLowerCase();
 
   const matchedSkills = resumeSkills.filter(skill =>
-    jobDescLower.includes(skill.toLowerCase())
+    jobDesc.includes(skill.toLowerCase())
   );
+  const missingSkills = resumeSkills.filter(skill =>
+  !jobDesc.includes(skill.toLowerCase())
+);
 
   const score = resumeSkills.length > 0
     ? Math.round((matchedSkills.length / resumeSkills.length) * 100)
@@ -207,7 +225,8 @@ const results = jobs.map(job => {
     jobId: job.id,
     title: job.title,
     matchScore: score,
-    matchedSkills
+    matchedSkills,
+    missingSkills
   };
 });
 

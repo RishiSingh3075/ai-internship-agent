@@ -202,3 +202,4 @@ build/
 dist/
 #testing 
 test.http
+test.js

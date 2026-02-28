@@ -24,6 +24,7 @@ model Resume {//pdf in V2
   title       String
   content     String
   createdAt   DateTime      @default(now())
+  parseSkills Json?
 
   userId      Int
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -57,8 +58,7 @@ model Application {
   job       Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
   resume    Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, jobId])
-  @@inique([userId,id])
+  @@unique([userId, jobId]) //@@inique([userId,id])
 }
 
 enum ApplicationStatus {
