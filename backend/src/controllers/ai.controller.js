@@ -94,7 +94,11 @@ Resume Content: ${resumeText}
 let parsedOutput;
 
 try {
-  // used regex for decoding proper json structure 
+  /* used regex for decoding proper json structure as ai answers in this structure {
+  "skills": [],
+  "position": [],
+  "preferred_roles": []
+// }*/
   const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
 
   if (!jsonMatch) {
@@ -115,7 +119,117 @@ try {
   );
 });
 
+const matchJobs=asyncHandler(async(req,res)=>{
+  const userId=req.user.id;
+  const {resumeId}=req.body;
+  const resume=await prisma.resume.findFirst({
+    where:{
+      id:resumeId,
+      userId,
+    }
+  })
+  if (!resume) {
+    return res.status(404).json(
+      apiResponse(404, null, "Resume not found")
+    );
+  }
+
+  const resumeTitle = resume.title;
+  const resumeText = resume.content;
+
+  console.log("Resume Title:", resumeTitle);
+  console.log("Resume Content:", resumeText);
+  const prompt =`
+Return ONLY valid JSON in this format:
+
+{
+  "skills": [],
+}  
+Extract:
+-skills from resume content
+
+
+resume content:${resumeText}
+`
+   const response = await axios.post(
+    "http://127.0.0.1:11434/api/generate",
+    {
+      model: "llama3",
+      prompt,
+      stream: false
+    }
+  );
+
+  const rawOutputskills = response.data.response;//string 
+
+let parsedOutputskills;
+
+try {
+  /* used regex for decoding proper json structure as ai answers in this structure {
+  "skills": [],
+  "position": [],
+  "preferred_roles": []
+// }*/
+  const jsonMatch = rawOutputskills.match(/\{[\s\S]*\}/);
+
+  if (!jsonMatch) {
+    throw new Error("No JSON found");
+  }
+
+  parsedOutputskills = JSON.parse(jsonMatch[0]);// only one json structure will be present
+
+} catch (error) {
+  parsedOutputskills = {
+    error: "Invalid JSON from AI",
+    raw: rawOutputskills
+  };
+}
+
+const resumeSkills = Array.isArray(parsedOutputskills.skills)
+  ? parsedOutputskills.skills
+  : [];
+// to make sure resumeSkills is an array
+const jobs = await prisma.job.findMany();
+
+const results = jobs.map(job => {
+
+  const jobDescLower = job.description.toLowerCase();
+
+  const matchedSkills = resumeSkills.filter(skill =>
+    jobDescLower.includes(skill.toLowerCase())
+  );
+
+  const score = resumeSkills.length > 0
+    ? Math.round((matchedSkills.length / resumeSkills.length) * 100)
+    : 0;
+
+  return {
+    jobId: job.id,
+    title: job.title,
+    matchScore: score,
+    matchedSkills
+  };
+});
+
+results.sort((a, b) => b.matchScore - a.matchScore);
+// beacuse javaScript object expects a compare function -postivive means larger so b>a 
+// - negative means a>b and 0 means equal
+/*JavaScript’s .sort() expects a compare function that returns:
+
+Negative → a comes before b
+
+Positive → b comes before a
+
+0 → no change */
+return res.status(200).json(
+  apiResponse(200,results,"all jobs checked and scred are calculated")
+)
+})
+
+
+
 export {
     aiIntegration,
-    parseResume
+    parseResume,
+    matchJobs
 }
