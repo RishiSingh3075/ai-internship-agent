@@ -32,6 +32,7 @@ const aiIntegration = asyncHandler(async (req, res) => {
   );
 
 });
+
 const parseResume = asyncHandler(async (req, res) => {
 
   const { resumeId } = req.body;
@@ -245,10 +246,75 @@ return res.status(200).json(
 )
 })
 
+const generatecoverletter=asyncHandler(async(req,res)=>{
+   const userId=req.user.id;
+  const {resumeId}=req.body;
+  let resume=await prisma.resume.findFirst({
+    where:{
+      id:resumeId,
+      userId,
+    }
+  })
+  if (!resume) {
+    return res.status(404).json(
+      apiResponse(404, null, "Resume not found")
+    );
+  }
 
+  
+
+  // console.log("Resume Title:", resumeTitle);
+  // console.log("Resume Content:", resumeText);
+  const job=await prisma.job.findUnique({
+    where:{
+      id:userId
+    }
+  })
+  if(!job){
+    return res.status(404).json(
+      apiResponse(404, null, "Job not found")
+    );
+  }
+   const prompt=`
+   Write a professional 150-200 word internship cover letter.
+
+Candidate Resume:
+${resume.content}
+
+Job Title:
+${job.title}
+
+Job Description:
+${job.description}
+
+Instructions:
+- Tailor the letter specifically to this job.
+- Highlight relevant skills.
+- Be confident and concise.
+- Do NOT include explanations.
+- Return only the cover letter text.
+- Candidate Name: ${req.user.name || "The Candidate"}
+- Company Name: ${job.company || job.title}
+   `;
+
+    const response = await axios.post(
+    "http://127.0.0.1:11434/api/generate",
+    {
+      model: "llama3",
+      prompt,
+      stream: false
+    }
+  );
+
+  const letter= response.data.response.trim();//string and used trim to remove leading and ending white spaces
+  return res.status(200).json(
+    apiResponse(200,letter,"cover letter generated")
+  )
+})
 
 export {
     aiIntegration,
     parseResume,
+    generatecoverletter,
     matchJobs
 }
