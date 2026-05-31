@@ -193,9 +193,7 @@ sessions/
 ecosystem.config.js
 
 # Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
+//i need dockerfilew for railway
 
 # Build directories
 build/

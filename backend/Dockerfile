@@ -1,14 +1,13 @@
 
-//
+
 # ---- Builder stage ----
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY . .
 RUN npm install --omit=dev
 
-COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
