@@ -4,6 +4,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "backend/Dockerfile"
+buildContext = "backend"
 
 [deploy]
 startCommand = "npx prisma migrate deploy && node server.js"
