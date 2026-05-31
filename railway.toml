@@ -1,15 +1,7 @@
-# railway.toml — Backend service config
-# Deploy the backend folder as the root service on Railway
-
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile"
-buildContext = "backend"
+builder = "NIXPACKS"
 
 [deploy]
 startCommand = "npx prisma migrate deploy && node server.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[[services]]
-name = "backend"

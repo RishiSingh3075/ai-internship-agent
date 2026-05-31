@@ -5,12 +5,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+
 COPY . .
 RUN npm install --omit=dev
-
-
-# Generate Prisma client
-RUN npx prisma generate
+RUN npx prisma generate --schema=prisma/schema.prisma
 
 # ---- Production stage ----
 FROM node:20-alpine AS runner
