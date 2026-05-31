@@ -1,26 +1,7 @@
-
-
-# ---- Builder stage ----
-FROM node:20-alpine AS builder
-
+FROM node:20-alpine
 WORKDIR /app
-
-
 COPY . .
-RUN npm install --omit=dev
+RUN npm install
 RUN npx prisma generate --schema=prisma/schema.prisma
-
-# ---- Production stage ----
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/server.js ./server.js
-COPY --from=builder /app/package.json ./package.json
-
 EXPOSE 5000
-
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "node server.js 2>&1 | tee /tmp/server.log; cat /tmp/server.log; sleep 3600"]
