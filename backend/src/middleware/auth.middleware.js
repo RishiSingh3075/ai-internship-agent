@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import apiResponse from "../utils/apiResponse.js";
+import prisma from "../config/prisma.js";
 function authenticateToken(req,res,next){
     const authHeader=req.headers['authorization'];
     const token=authHeader && authHeader.split(' ')[1];

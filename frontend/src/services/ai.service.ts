@@ -21,10 +21,10 @@ export const aiService = {
         return res.data;
     },
 
-    async generateCoverLetter(resumeId: number) {
+    async generateCoverLetter(resumeId: number, jobId: number) {
         const res = await api.post<ApiResponse<string>>(
             "/api/ai/generate-cover-letter",
-            { resumeId }
+            { resumeId, jobId }
         );
         return res.data;
     },

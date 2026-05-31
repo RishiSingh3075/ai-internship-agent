@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Resume, ParsedResume, JobMatch } from "@/types";
+import { Resume, ParsedResume, JobMatch, Job } from "@/types";
 import { resumeService } from "@/services/resume.service";
 import { aiService } from "@/services/ai.service";
+import { jobService } from "@/services/job.service";
 
 export default function AIPage() {
     const [resumes, setResumes] = useState<Resume[]>([]);
+    const [jobs, setJobs] = useState<Job[]>([]);
     const [selectedResume, setSelectedResume] = useState<number | "">("");
+    const [selectedJob, setSelectedJob] = useState<number | "">("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -27,17 +30,21 @@ export default function AIPage() {
     const [activeTab, setActiveTab] = useState<"parse" | "match" | "cover">("parse");
 
     useEffect(() => {
-        const fetchResumes = async () => {
+        const fetchData = async () => {
             try {
-                const res = await resumeService.getResumes();
-                setResumes(res.data || []);
+                const [resumeRes, jobRes] = await Promise.all([
+                    resumeService.getResumes(),
+                    jobService.listJobs()
+                ]);
+                setResumes(resumeRes.data || []);
+                setJobs(jobRes.data || []);
             } catch {
-                setError("Failed to load resumes");
+                setError("Failed to load data");
             } finally {
                 setLoading(false);
             }
         };
-        fetchResumes();
+        fetchData();
     }, []);
 
     const handleParseResume = async () => {
@@ -79,12 +86,12 @@ export default function AIPage() {
     };
 
     const handleGenerateCoverLetter = async () => {
-        if (!selectedResume) return;
+        if (!selectedResume || !selectedJob) return;
         setCoverLoading(true);
         setError("");
         setCoverLetter("");
         try {
-            const res = await aiService.generateCoverLetter(Number(selectedResume));
+            const res = await aiService.generateCoverLetter(Number(selectedResume), Number(selectedJob));
             if (res.success) {
                 setCoverLetter(typeof res.data === "string" ? res.data : JSON.stringify(res.data));
             } else {
@@ -274,10 +281,32 @@ export default function AIPage() {
                     <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 20 }}>
                         Generate a tailored cover letter based on your resume and a job posting.
                     </p>
+
+                    <div className="form-group" style={{ marginBottom: 20 }}>
+                        <label className="form-label">Select Job Posting</label>
+                        {loading ? (
+                            <div className="spinner" />
+                        ) : jobs.length === 0 ? (
+                            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>No jobs found.</p>
+                        ) : (
+                            <select
+                                className="form-input"
+                                value={selectedJob}
+                                onChange={(e) => setSelectedJob(Number(e.target.value))}
+                                style={{ maxWidth: 400 }}
+                            >
+                                <option value="">Choose a job...</option>
+                                {jobs.map((j) => (
+                                    <option key={j.id} value={j.id}>{j.company} - {j.title}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+
                     <button
                         className="btn btn-primary"
                         onClick={handleGenerateCoverLetter}
-                        disabled={!selectedResume || coverLoading}
+                        disabled={!selectedResume || !selectedJob || coverLoading}
                         style={{ marginBottom: 20 }}
                     >
                         {coverLoading ? <><span className="spinner" /> Generating...</> : "Generate Cover Letter"}

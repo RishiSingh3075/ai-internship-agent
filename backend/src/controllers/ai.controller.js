@@ -248,7 +248,7 @@ return res.status(200).json(
 
 const generatecoverletter=asyncHandler(async(req,res)=>{
    const userId=req.user.id;
-  const {resumeId}=req.body;
+  const {resumeId, jobId}=req.body;
   let resume=await prisma.resume.findFirst({
     where:{
       id:resumeId,
@@ -267,7 +267,7 @@ const generatecoverletter=asyncHandler(async(req,res)=>{
   // console.log("Resume Content:", resumeText);
   const job=await prisma.job.findUnique({
     where:{
-      id:userId
+      id:jobId
     }
   })
   if(!job){
