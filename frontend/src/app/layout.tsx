@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "InternAI - AI Internship Application Assistant",
+  title: "Apply-Mind - AI Internship Application Assistant",
   description: "Find internships, manage resumes, and get AI-powered career guidance",
 };
 

@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div>
             <nav className="navbar">
                 <div className="navbar-inner">
-                    <Link href="/dashboard" className="navbar-brand">InternAI</Link>
+                    <Link href="/dashboard" className="navbar-brand">Apply-Mind</Link>
                     <div className="navbar-links">
                         {navLinks.map((link) => (
                             <Link

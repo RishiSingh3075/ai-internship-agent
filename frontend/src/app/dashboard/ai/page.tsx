@@ -60,7 +60,7 @@ export default function AIPage() {
                 setError(res.message);
             }
         } catch {
-            setError("AI parsing failed. Make sure Ollama is running.");
+            setError("AI parsing failed. AI service error. Please try again..");
         } finally {
             setParseLoading(false);
         }
@@ -79,7 +79,7 @@ export default function AIPage() {
                 setError(res.message);
             }
         } catch {
-            setError("Job matching failed. Make sure Ollama is running.");
+            setError("Job matching failed. AI service error. Please try again..");
         } finally {
             setMatchLoading(false);
         }
@@ -98,7 +98,7 @@ export default function AIPage() {
                 setError(res.message);
             }
         } catch {
-            setError("Cover letter generation failed. Make sure Ollama is running.");
+            setError("Cover letter generation failed. AI service error. Please try again..");
         } finally {
             setCoverLoading(false);
         }

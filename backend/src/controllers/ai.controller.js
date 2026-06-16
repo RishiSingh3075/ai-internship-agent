@@ -1,67 +1,44 @@
 import prisma from '../config/prisma.js';
-import axios from "axios";
 import asyncHandler from '../middleware/asyncHandler.js';
 import apiResponse from "../utils/apiResponse.js";
+import groq from "../config/groq.js";
+
+// helper — what this does: sends a prompt to Groq and returns raw text
+const askGroq = async (prompt) => {
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.3,
+  });
+  return completion.choices[0].message.content;
+};
 
 const aiIntegration = asyncHandler(async (req, res) => {
-
-  const response = await axios.post(
-    "http://127.0.0.1:11434/api/generate",
-    {
-      model: "llama3",
-      prompt: 'Reply ONLY with this exact JSON: { "status": "AI connected" }',
-      stream: false
-    }
-  );
-
-  const rawOutput = response.data.response;
+  const rawOutput = await askGroq('Reply ONLY with this exact JSON: { "status": "AI connected" }');
 
   let parsedOutput;
-
   try {
     parsedOutput = JSON.parse(rawOutput);
   } catch (error) {
-    parsedOutput = {
-      error: "Invalid JSON from AI",
-      raw: rawOutput
-    };
+    parsedOutput = { error: "Invalid JSON from AI", raw: rawOutput };
   }
 
   return res.status(200).json(
     apiResponse(200, parsedOutput, "AI integrated successfully")
   );
-
 });
 
 const parseResume = asyncHandler(async (req, res) => {
-
   const { resumeId } = req.body;
   const userId = req.user.id;
 
-  console.log("Request Body:", req.body);
-  console.log("User ID from token:", userId);
-  console.log("Resume ID received:", resumeId);
-
   const resume = await prisma.resume.findFirst({
-    where: {
-      id: resumeId,
-      userId: userId
-    }
+    where: { id: resumeId, userId }
   });
 
-  console.log("Fetched Resume:", resume);
-
   if (!resume) {
-    return res.status(404).json(
-      apiResponse(404, null, "Resume not found")
-    );
+    return res.status(404).json(apiResponse(404, null, "Resume not found"));
   }
-
-  const resumeTitle = resume.title;
-  const resumeText = resume.content;
-
-  console.log("Resume Title:", resumeTitle);
-  console.log("Resume Content:", resumeText);
 
   const prompt = `
 Return ONLY valid JSON in this format:
@@ -77,206 +54,114 @@ Extract:
 - position from resume title
 - preferred_roles from resume content
 
-Resume Title: ${resumeTitle}
-Resume Content: ${resumeText}
+Resume Title: ${resume.title}
+Resume Content: ${resume.content}
 `;
 
-  const response = await axios.post(
-    "http://127.0.0.1:11434/api/generate",
-    {
-      model: "llama3",
-      prompt,
-      stream: false
-    }
-  );
+  const rawOutput = await askGroq(prompt);
 
-  const rawOutput = response.data.response;
-
-let parsedOutput;
-
-try {
-  /* used regex for decoding proper json structure as ai answers in this structure {
-  "skills": [],
-  "position": [],
-  "preferred_roles": []
-// }*/
-  const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    throw new Error("No JSON found");
+  let parsedOutput;
+  try {
+    const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    parsedOutput = JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    parsedOutput = { error: "Invalid JSON from AI", raw: rawOutput };
   }
-
-  parsedOutput = JSON.parse(jsonMatch[0]);
-
-} catch (error) {
-  parsedOutput = {
-    error: "Invalid JSON from AI",
-    raw: rawOutput
-  };
-}
 
   return res.status(200).json(
     apiResponse(200, parsedOutput, "Resume parsed successfully")
   );
 });
 
-const matchJobs=asyncHandler(async(req,res)=>{
-  const userId=req.user.id;
-  const {resumeId}=req.body;
-  let resume=await prisma.resume.findFirst({
-    where:{
-      id:resumeId,
-      userId,
-    }
-  })
+const matchJobs = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { resumeId } = req.body;
+
+  let resume = await prisma.resume.findFirst({
+    where: { id: resumeId, userId }
+  });
+
   if (!resume) {
-    return res.status(404).json(
-      apiResponse(404, null, "Resume not found")
-    );
+    return res.status(404).json(apiResponse(404, null, "Resume not found"));
   }
 
-  const resumeTitle = resume.title;
-  const resumeText = resume.content;
-
-  console.log("Resume Title:", resumeTitle);
-  console.log("Resume Content:", resumeText);
-if (!Array.isArray(resume.parseSkills) || resume.parseSkills.length === 0){    // if parseSkills is null or empty
-  const prompt =`
+  if (!Array.isArray(resume.parseSkills) || resume.parseSkills.length === 0) {
+    const prompt = `
 Return ONLY valid JSON in this format:
 
 {
-  "skills": [],
-}  
-Extract:
--skills from resume content
-
-
-resume content:${resumeText}
-`
-   const response = await axios.post(
-    "http://127.0.0.1:11434/api/generate",
-    {
-      model: "llama3",
-      prompt,
-      stream: false
-    }
-  );
-
-  const rawOutputskills = response.data.response;//string 
-
-let parsedOutputskills;
-
-try {
-  /* used regex for decoding proper json structure as ai answers in this structure {
-  "skills": [],
-  "position": [],
-  "preferred_roles": []
-// }*/
-  const jsonMatch = rawOutputskills.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    throw new Error("No JSON found");
-  }
-
-  parsedOutputskills = JSON.parse(jsonMatch[0]);// only one json structure will be present
-
-} catch (error) {
-  parsedOutputskills = {
-    error: "Invalid JSON from AI",
-    raw: rawOutputskills
-  };
+  "skills": []
 }
 
-// v2 added parsedSKills to resume 
-if (Array.isArray(parsedOutputskills.skills)) {
-  resume = await prisma.resume.update({
-    where: { id: resumeId },
-    data: {
-      parseSkills: parsedOutputskills.skills
+Extract skills from resume content:
+${resume.content}
+`;
+
+    const rawOutputskills = await askGroq(prompt);
+
+    let parsedOutputskills;
+    try {
+      const jsonMatch = rawOutputskills.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON found");
+      parsedOutputskills = JSON.parse(jsonMatch[0]);
+    } catch (error) {
+      parsedOutputskills = { error: "Invalid JSON from AI", raw: rawOutputskills };
     }
+
+    if (Array.isArray(parsedOutputskills.skills)) {
+      resume = await prisma.resume.update({
+        where: { id: resumeId },
+        data: { parseSkills: parsedOutputskills.skills }
+      });
+    } else {
+      return res.status(500).json(
+        apiResponse(500, null, "Failed to extract skills from resume")
+      );
+    }
+  }
+
+  const resumeSkills = Array.isArray(resume.parseSkills) ? resume.parseSkills : [];
+  const jobs = await prisma.job.findMany();
+
+  const results = jobs.map(job => {
+    const jobDesc = job.description.toLowerCase();
+    const matchedSkills = resumeSkills.filter(skill => jobDesc.includes(skill.toLowerCase()));
+    const missingSkills = resumeSkills.filter(skill => !jobDesc.includes(skill.toLowerCase()));
+    const score = resumeSkills.length > 0
+      ? Math.round((matchedSkills.length / resumeSkills.length) * 100)
+      : 0;
+
+    return { jobId: job.id, title: job.title, matchScore: score, matchedSkills, missingSkills };
   });
-} else {
-  return res.status(500).json(
-    apiResponse(500, null, "Failed to extract skills from resume")
+
+  results.sort((a, b) => b.matchScore - a.matchScore);
+
+  return res.status(200).json(
+    apiResponse(200, results, "All jobs checked and scores calculated")
   );
-}}
-const resumeSkills = Array.isArray(resume.parseSkills)
-  ? resume.parseSkills
-  : [];
-// to make sure resumeSkills is an array
-
-const jobs = await prisma.job.findMany();
-
-const results = jobs.map(job => {
-
-  const jobDesc = job.description.toLowerCase();
-
-  const matchedSkills = resumeSkills.filter(skill =>
-    jobDesc.includes(skill.toLowerCase())
-  );
-  const missingSkills = resumeSkills.filter(skill =>
-  !jobDesc.includes(skill.toLowerCase())
-);
-
-  const score = resumeSkills.length > 0
-    ? Math.round((matchedSkills.length / resumeSkills.length) * 100)
-    : 0;
-
-  return {
-    jobId: job.id,
-    title: job.title,
-    matchScore: score,
-    matchedSkills,
-    missingSkills
-  };
 });
 
-results.sort((a, b) => b.matchScore - a.matchScore);
-// beacuse javaScript object expects a compare function -postivive means larger so b>a 
-// - negative means a>b and 0 means equal
-/*JavaScript’s .sort() expects a compare function that returns:
+const generatecoverletter = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { resumeId, jobId } = req.body;
 
-Negative → a comes before b
+  const resume = await prisma.resume.findFirst({
+    where: { id: resumeId, userId }
+  });
 
-Positive → b comes before a
-
-0 → no change */
-return res.status(200).json(
-  apiResponse(200,results,"all jobs checked and scred are calculated")
-)
-})
-
-const generatecoverletter=asyncHandler(async(req,res)=>{
-   const userId=req.user.id;
-  const {resumeId, jobId}=req.body;
-  let resume=await prisma.resume.findFirst({
-    where:{
-      id:resumeId,
-      userId,
-    }
-  })
   if (!resume) {
-    return res.status(404).json(
-      apiResponse(404, null, "Resume not found")
-    );
+    return res.status(404).json(apiResponse(404, null, "Resume not found"));
   }
 
-  
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
 
-  // console.log("Resume Title:", resumeTitle);
-  // console.log("Resume Content:", resumeText);
-  const job=await prisma.job.findUnique({
-    where:{
-      id:jobId
-    }
-  })
-  if(!job){
-    return res.status(404).json(
-      apiResponse(404, null, "Job not found")
-    );
+  if (!job) {
+    return res.status(404).json(apiResponse(404, null, "Job not found"));
   }
-   const prompt=`
-   Write a professional 150-200 word internship cover letter.
+
+  const prompt = `
+Write a professional 150-200 word internship cover letter.
 
 Candidate Resume:
 ${resume.content}
@@ -295,26 +180,13 @@ Instructions:
 - Return only the cover letter text.
 - Candidate Name: ${req.user.name || "The Candidate"}
 - Company Name: ${job.company || job.title}
-   `;
+`;
 
-    const response = await axios.post(
-    "http://127.0.0.1:11434/api/generate",
-    {
-      model: "llama3",
-      prompt,
-      stream: false
-    }
-  );
+  const letter = await askGroq(prompt);
 
-  const letter= response.data.response.trim();//string and used trim to remove leading and ending white spaces
   return res.status(200).json(
-    apiResponse(200,letter,"cover letter generated")
-  )
-})
+    apiResponse(200, letter.trim(), "Cover letter generated")
+  );
+});
 
-export {
-    aiIntegration,
-    parseResume,
-    generatecoverletter,
-    matchJobs
-}
+export { aiIntegration, parseResume, generatecoverletter, matchJobs };
