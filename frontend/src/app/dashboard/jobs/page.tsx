@@ -122,47 +122,49 @@ export default function JobsPage() {
 
             {loading ? (
                 <div className="loading-container"><div className="spinner spinner-lg" /></div>
-            ) : jobs.length === 0 ? (
-                <div className="empty-state">
-                    <div className="empty-state-icon">💼</div>
-                    <div className="empty-state-text">No jobs found</div>
-                    <div className="empty-state-sub">Try adjusting your search filters</div>
-                </div>
             ) : (
                 <>
-                    <div className="grid-2">
-                        {jobs.map((job) => (
-                            <div 
-                                className="card" 
-                                key={job.id} 
-                                onClick={() => setSelectedJobDetail(job)}
-                                style={{ cursor: "pointer" }}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                                    <div>
-                                        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{job.title}</h3>
-                                        <p style={{ color: "var(--accent-primary-hover)", fontSize: 14, fontWeight: 600 }}>{job.company}</p>
+                    {jobs.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">💼</div>
+                            <div className="empty-state-text">No jobs found</div>
+                            <div className="empty-state-sub">Try adjusting your search filters</div>
+                        </div>
+                    ) : (
+                        <div className="grid-2">
+                            {jobs.map((job) => (
+                                <div 
+                                    className="card" 
+                                    key={job.id} 
+                                    onClick={() => setSelectedJobDetail(job)}
+                                    style={{ cursor: "pointer" }}
+                                >
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                                        <div>
+                                            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{job.title}</h3>
+                                            <p style={{ color: "var(--accent-primary-hover)", fontSize: 14, fontWeight: 600 }}>{job.company}</p>
+                                        </div>
+                                        <button 
+                                            className="btn btn-primary btn-sm" 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openApplyModal(job);
+                                            }}
+                                        >
+                                            Apply
+                                        </button>
                                     </div>
-                                    <button 
-                                        className="btn btn-primary btn-sm" 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            openApplyModal(job);
-                                        }}
-                                    >
-                                        Apply
-                                    </button>
+                                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12, fontSize: 13, color: "var(--text-secondary)" }}>
+                                        <span>📍 {job.location}</span>
+                                        {job.salary && <span>💰 ₹{job.salary.toLocaleString()}</span>}
+                                    </div>
+                                    <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6, maxHeight: 80, overflow: "hidden" }}>
+                                        {job.description}
+                                    </p>
                                 </div>
-                                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12, fontSize: 13, color: "var(--text-secondary)" }}>
-                                    <span>📍 {job.location}</span>
-                                    {job.salary && <span>💰 ₹{job.salary.toLocaleString()}</span>}
-                                </div>
-                                <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6, maxHeight: 80, overflow: "hidden" }}>
-                                    {job.description}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Pagination */}
                     <div className="pagination">
