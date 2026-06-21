@@ -19,12 +19,13 @@ model User {
   applications Application[]
 }
 
-model Resume {//pdf in V2
+model Resume {
   id          Int           @id @default(autoincrement())
   title       String
   content     String
   createdAt   DateTime      @default(now())
   parseSkills Json?
+  embedding   Unsupported("vector(768)")?
 
   userId      Int
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -40,6 +41,7 @@ model Job {
   location    String
   salary      Int?
   createdAt   DateTime      @default(now())
+  embedding   Unsupported("vector(768)")?
 
   applications Application[]
 }
