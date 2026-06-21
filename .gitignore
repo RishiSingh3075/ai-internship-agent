@@ -201,3 +201,7 @@ dist/
 #testing 
 test.http
 test.js
+test*
+#databse dump or backup
+*.dump
+# applymind_backup.dump

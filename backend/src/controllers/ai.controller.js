@@ -2,6 +2,8 @@ import prisma from '../config/prisma.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import apiResponse from "../utils/apiResponse.js";
 import groq from "../config/groq.js";
+import { findMatchingJobs } from '../utils/matching.js';
+
 
 // helper — what this does: sends a prompt to Groq and returns raw text
 const askGroq = async (prompt) => {
@@ -141,6 +143,32 @@ ${resume.content}
     apiResponse(200, results, "All jobs checked and scores calculated")
   );
 });
+const matchJobsSemantic = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { resumeId, minSimilarity } = req.body;
+
+  const resume = await prisma.resume.findFirst({
+    where: { id: resumeId, userId }
+  });
+
+  if (!resume) {
+    return res.status(404).json(apiResponse(404, null, "Resume not found"));
+  }
+
+  // minSimilarity is optional — if the user doesn't send it, we pass null
+  // so findMatchingJobs returns ALL jobs ranked, same "show everything"
+  // behavior as the existing keyword-based matchJobs function.
+  const threshold = (minSimilarity !== undefined && !isNaN(parseFloat(minSimilarity)))
+    ? parseFloat(minSimilarity)
+    : null;
+
+  const results = await findMatchingJobs(resumeId, threshold);
+
+  return res.status(200).json(
+    apiResponse(200, results, "Semantic job matches calculated")
+  );
+});
+
 
 const generatecoverletter = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -189,4 +217,4 @@ Instructions:
   );
 });
 
-export { aiIntegration, parseResume, generatecoverletter, matchJobs };
+export { aiIntegration, parseResume, generatecoverletter, matchJobs, matchJobsSemantic };
