@@ -74,6 +74,14 @@ export interface JobMatch {
   missingSkills: string[];
 }
 
+export interface SemanticJobMatch {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  similarity: number;
+}
+
 export interface JobFilters {
   search?: string;
   location?: string;
@@ -82,3 +90,4 @@ export interface JobFilters {
   page?: number;
   limit?: number;
 }
+

@@ -1,5 +1,5 @@
 import api from "@/lib/api";
-import { ApiResponse, ParsedResume, JobMatch } from "@/types";
+import { ApiResponse, ParsedResume, JobMatch, SemanticJobMatch } from "@/types";
 
 export const aiService = {
     async testConnection() {
@@ -21,6 +21,14 @@ export const aiService = {
         return res.data;
     },
 
+    async semanticMatchJobs(resumeId: number, minSimilarity?: number) {
+        const res = await api.post<ApiResponse<SemanticJobMatch[]>>("/api/ai/semanticmatchjobs", {
+            resumeId,
+            ...(minSimilarity !== undefined && { minSimilarity }),
+        });
+        return res.data;
+    },
+
     async generateCoverLetter(resumeId: number, jobId: number) {
         const res = await api.post<ApiResponse<string>>(
             "/api/ai/generate-cover-letter",
@@ -29,3 +37,4 @@ export const aiService = {
         return res.data;
     },
 };
+

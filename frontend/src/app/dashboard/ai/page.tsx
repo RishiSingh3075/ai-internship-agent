@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Resume, ParsedResume, JobMatch, Job } from "@/types";
+import { Resume, ParsedResume, JobMatch, Job, SemanticJobMatch } from "@/types";
 import { resumeService } from "@/services/resume.service";
 import { aiService } from "@/services/ai.service";
 import { jobService } from "@/services/job.service";
@@ -22,12 +22,17 @@ export default function AIPage() {
     const [jobMatches, setJobMatches] = useState<JobMatch[]>([]);
     const [matchLoading, setMatchLoading] = useState(false);
 
+    // Semantic Match
+    const [semanticMatches, setSemanticMatches] = useState<SemanticJobMatch[]>([]);
+    const [semanticLoading, setSemanticLoading] = useState(false);
+    const [minSimilarity, setMinSimilarity] = useState<number | "">("");
+
     // Cover Letter
     const [coverLetter, setCoverLetter] = useState("");
     const [coverLoading, setCoverLoading] = useState(false);
 
     // Active tab
-    const [activeTab, setActiveTab] = useState<"parse" | "match" | "cover">("parse");
+    const [activeTab, setActiveTab] = useState<"parse" | "match" | "cover" | "semantic">("parse");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -82,6 +87,26 @@ export default function AIPage() {
             setError("Job matching failed. AI service error. Please try again..");
         } finally {
             setMatchLoading(false);
+        }
+    };
+
+    const handleSemanticMatchJobs = async () => {
+        if (!selectedResume) return;
+        setSemanticLoading(true);
+        setError("");
+        setSemanticMatches([]);
+        try {
+            const threshold = minSimilarity === "" ? undefined : Number(minSimilarity);
+            const res = await aiService.semanticMatchJobs(Number(selectedResume), threshold);
+            if (res.success) {
+                setSemanticMatches(res.data || []);
+            } else {
+                setError(res.message);
+            }
+        } catch {
+            setError("Semantic job matching failed. AI service error. Please try again..");
+        } finally {
+            setSemanticLoading(false);
         }
     };
 
@@ -156,6 +181,12 @@ export default function AIPage() {
                     onClick={() => setActiveTab("match")}
                 >
                     🎯 Match Jobs
+                </button>
+                <button
+                    className={`btn ${activeTab === "semantic" ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setActiveTab("semantic")}
+                >
+                    🔮 Semantic Match
                 </button>
                 <button
                     className={`btn ${activeTab === "cover" ? "btn-primary" : "btn-ghost"}`}
@@ -314,6 +345,87 @@ export default function AIPage() {
 
                     {coverLetter && (
                         <div className="cover-letter-box">{coverLetter}</div>
+                    )}
+                </div>
+            )}
+
+            {/* Semantic Match Tab */}
+            {activeTab === "semantic" && (
+                <div className="card">
+                    <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Semantic Match</h3>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 20 }}>
+                        Find jobs that are semantically related to your resume contents using vector embeddings.
+                    </p>
+
+                    <div className="form-group" style={{ maxWidth: 300, marginBottom: 20 }}>
+                        <label className="form-label">Similarity:</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            placeholder="e.g. 0.75 (optional)"
+                            value={minSimilarity}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "") {
+                                    setMinSimilarity("");
+                                } else {
+                                    setMinSimilarity(Math.max(0, Math.min(1, Number(val))));
+                                }
+                            }}
+                        />
+                        <p style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 4 }}>
+                            Leave empty to rank all jobs
+                        </p>
+                    </div>
+
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleSemanticMatchJobs}
+                        disabled={!selectedResume || semanticLoading}
+                        style={{ marginBottom: 20, background: "linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)", boxShadow: "0 0 30px rgba(139, 92, 246, 0.3)" }}
+                    >
+                        {semanticLoading ? <><span className="spinner" /> Matching...</> : "Find Semantically Similar Jobs"}
+                    </button>
+
+                    {semanticLoading ? (
+                        <div className="loading-container">
+                            <div className="spinner spinner-lg" style={{ borderTopColor: "var(--accent-secondary)" }} />
+                        </div>
+                    ) : semanticMatches.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            {semanticMatches.map((match) => (
+                                <div key={match.id} className="card" style={{ background: "var(--bg-input)", borderLeft: "4px solid var(--accent-secondary)" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                                        <div 
+                                            className="match-score" 
+                                            style={{ 
+                                                color: "var(--accent-secondary)", 
+                                                borderColor: "var(--accent-secondary)", 
+                                                background: "rgba(139, 92, 246, 0.1)" 
+                                            }}
+                                        >
+                                            {Math.round(match.similarity * 100)}%
+                                        </div>
+                                        <div>
+                                            <h4 style={{ fontSize: 16, fontWeight: 700 }}>{match.title}</h4>
+                                            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                                                {match.company} &bull; {match.location} (Job #{match.id})
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        !semanticLoading && selectedResume && (
+                            <div className="empty-state">
+                                <div className="empty-state-icon">🔍</div>
+                                <p>No matching jobs found. Try lowering the similarity threshold.</p>
+                            </div>
+                        )
                     )}
                 </div>
             )}
