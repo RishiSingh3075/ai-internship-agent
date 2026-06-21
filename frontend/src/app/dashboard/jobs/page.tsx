@@ -14,6 +14,7 @@ export default function JobsPage() {
 
     // Apply modal
     const [applyJob, setApplyJob] = useState<Job | null>(null);
+    const [selectedJobDetail, setSelectedJobDetail] = useState<Job | null>(null);
     const [resumes, setResumes] = useState<Resume[]>([]);
     const [selectedResume, setSelectedResume] = useState<number | "">("");
     const [applyLoading, setApplyLoading] = useState(false);
@@ -131,13 +132,24 @@ export default function JobsPage() {
                 <>
                     <div className="grid-2">
                         {jobs.map((job) => (
-                            <div className="card" key={job.id}>
+                            <div 
+                                className="card" 
+                                key={job.id} 
+                                onClick={() => setSelectedJobDetail(job)}
+                                style={{ cursor: "pointer" }}
+                            >
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                                     <div>
                                         <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{job.title}</h3>
                                         <p style={{ color: "var(--accent-primary-hover)", fontSize: 14, fontWeight: 600 }}>{job.company}</p>
                                     </div>
-                                    <button className="btn btn-primary btn-sm" onClick={() => openApplyModal(job)}>
+                                    <button 
+                                        className="btn btn-primary btn-sm" 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openApplyModal(job);
+                                        }}
+                                    >
                                         Apply
                                     </button>
                                 </div>
@@ -213,6 +225,56 @@ export default function JobsPage() {
                                 disabled={!selectedResume || applyLoading}
                             >
                                 {applyLoading ? <span className="spinner" /> : "Submit Application"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Job Detail Modal */}
+            {selectedJobDetail && (
+                <div className="modal-overlay" onClick={() => setSelectedJobDetail(null)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
+                        <h2 className="modal-title" style={{ marginBottom: 8 }}>{selectedJobDetail.title}</h2>
+                        <p style={{ color: "var(--accent-primary-hover)", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+                            {selectedJobDetail.company}
+                        </p>
+                        
+                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20, fontSize: 13, color: "var(--text-secondary)" }}>
+                            <span>📍 {selectedJobDetail.location}</span>
+                            {selectedJobDetail.salary && <span>💰 ₹{selectedJobDetail.salary.toLocaleString()}</span>}
+                            <span>📅 Posted: {new Date(selectedJobDetail.createdAt).toLocaleDateString()}</span>
+                            <span>🔢 ID: #{selectedJobDetail.id}</span>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Job Description</label>
+                            <div style={{ 
+                                background: "var(--bg-input)", 
+                                border: "1px solid var(--border-color)", 
+                                borderRadius: "var(--radius-sm)", 
+                                padding: 16, 
+                                fontSize: 14, 
+                                lineHeight: 1.6, 
+                                color: "var(--text-primary)", 
+                                whiteSpace: "pre-wrap",
+                                maxHeight: 300,
+                                overflowY: "auto"
+                            }}>
+                                {selectedJobDetail.description}
+                            </div>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button className="btn btn-ghost" onClick={() => setSelectedJobDetail(null)}>Close</button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    const job = selectedJobDetail;
+                                    setSelectedJobDetail(null);
+                                    openApplyModal(job);
+                                }}
+                            >
+                                Apply Now
                             </button>
                         </div>
                     </div>
