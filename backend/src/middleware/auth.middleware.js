@@ -73,5 +73,4 @@ async function destroyRefreshToken(req,res,next){
         apiResponse(200,null,"Logged out successfully")
     );
 }
-
 export { authenticateToken, authenticateRefreshToken,destroyRefreshToken };
